@@ -74,13 +74,18 @@ class Pipeline:
         """Register a stage. Returns self for chaining."""
         if any(s.name == name for s in self._stages):
             raise ValueError(f"Stage '{name}' already registered")
+        resolved_deps = deps or []
         self._stages.append(Stage(
-            name=name, fn=fn, deps=deps or [],
+            name=name, fn=fn, deps=resolved_deps,
             retry=retry, retry_backoff=retry_backoff,
             timeout=timeout, fail_mode=fail_mode,
         ))
         if name not in self._state["stages"]:
             self._state["stages"][name] = _pending_state()
+        # Save DAG structure for visualization
+        if "dag" not in self._state:
+            self._state["dag"] = {}
+        self._state["dag"][name] = resolved_deps
         return self
 
     def run(self, context: Dict = None) -> Dict:
@@ -199,6 +204,7 @@ class Pipeline:
             "pipeline_id": self.pipeline_id,
             "started_at": datetime.now(timezone.utc).isoformat(),
             "stages": {},
+            "dag": {},  # {stage_name: [dep1, dep2, ...]}
         }
 
     def _get_stage(self, name: str) -> Stage:

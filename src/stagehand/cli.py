@@ -6,6 +6,7 @@ Commands:
     stagehand status <pipeline_id>       Show stage-by-stage status
     stagehand reset  <pipeline_id>       Clear checkpoint (start fresh on next run)
     stagehand runs   <pipeline_id>       Show run history
+    stagehand dashboard [--port N]       Visual pipeline dashboard
     stagehand version                    Print version
 """
 
@@ -63,6 +64,23 @@ def main():
             failed = ", ".join(r["failed_stages"]) or "—"
             _row(r["run"], r["started_at"][:16], f"{r['done']}/{r['total']}", failed)
 
+    elif cmd == "dashboard":
+        port = 7400
+        no_browser = False
+        i = 1
+        while i < len(args):
+            if args[i] == "--port" and i + 1 < len(args):
+                port = int(args[i + 1])
+                i += 2
+            elif args[i] == "--no-browser":
+                no_browser = True
+                i += 1
+            else:
+                i += 1
+
+        from .dashboard import serve
+        serve(port=port, open_browser=not no_browser)
+
     else:
         print(f"Unknown command: {cmd}", file=sys.stderr)
         _print_help()
@@ -77,6 +95,9 @@ Usage:
   stagehand status <pipeline_id>   Show stage status for a pipeline
   stagehand reset  <pipeline_id>   Clear checkpoint (restart from scratch)
   stagehand runs   <pipeline_id>   Show run history
+  stagehand dashboard              Visual pipeline dashboard (http://localhost:7400)
+    --port N                       Custom port (default: 7400)
+    --no-browser                   Don't auto-open browser
   stagehand version                Print version
 
 Checkpoint directory: $STAGEHAND_DIR (default: ~/.stagehand)
