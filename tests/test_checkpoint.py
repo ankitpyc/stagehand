@@ -3,8 +3,9 @@
 import json
 import os
 import threading
-import pytest
 from pathlib import Path
+
+import pytest
 
 # Use an isolated temp dir for all checkpoint tests
 os.environ["STAGEHAND_DIR"] = "/tmp/stagehand-test"
@@ -30,7 +31,17 @@ def _state(pipeline_id, stages=None):
 
 class TestSaveLoad:
     def test_save_and_load_roundtrip(self):
-        state = _state("test-pipe", {"fetch": {"status": "done", "output": {"x": 1}, "error": None, "attempts": 1}})
+        state = _state(
+            "test-pipe",
+            {
+                "fetch": {
+                    "status": "done",
+                    "output": {"x": 1},
+                    "error": None,
+                    "attempts": 1,
+                }
+            },
+        )
         ckpt.save("test-pipe", state)
         loaded = ckpt.load("test-pipe")
         assert loaded is not None
@@ -62,7 +73,10 @@ class TestAtomicWrite:
 
     def test_checkpoint_is_valid_json_after_write(self, tmp_path):
         os.environ["STAGEHAND_DIR"] = str(tmp_path / "stagehand")
-        state = _state("test-json", {"s1": {"status": "done", "output": "hello", "error": None, "attempts": 1}})
+        state = _state(
+            "test-json",
+            {"s1": {"status": "done", "output": "hello", "error": None, "attempts": 1}},
+        )
         ckpt.save("test-json", state)
         path = Path(os.environ["STAGEHAND_DIR"]) / "active" / "test-json.json"
         data = json.loads(path.read_text())
@@ -76,7 +90,17 @@ class TestConcurrentAccess:
 
         def writer(i):
             try:
-                state = _state(pipeline_id, {f"stage_{i}": {"status": "done", "output": i, "error": None, "attempts": 1}})
+                state = _state(
+                    pipeline_id,
+                    {
+                        f"stage_{i}": {
+                            "status": "done",
+                            "output": i,
+                            "error": None,
+                            "attempts": 1,
+                        }
+                    },
+                )
                 ckpt.save(pipeline_id, state)
             except Exception as e:
                 errors.append(e)

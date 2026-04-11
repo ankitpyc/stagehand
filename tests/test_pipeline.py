@@ -2,7 +2,7 @@
 
 import os
 import time
-import threading
+
 import pytest
 
 os.environ["STAGEHAND_DIR"] = "/tmp/stagehand-test-pipeline"
@@ -21,10 +21,12 @@ def isolated_dir(tmp_path):
 def pid(name="test"):
     """Unique pipeline ID per test."""
     import uuid
+
     return f"{name}-{uuid.uuid4().hex[:8]}"
 
 
 # ── Basic execution ────────────────────────────────────────────────────────────
+
 
 class TestBasicExecution:
     def test_stages_run_in_dep_order(self):
@@ -58,6 +60,7 @@ class TestBasicExecution:
 
 
 # ── Checkpointing and resume ───────────────────────────────────────────────────
+
 
 class TestCheckpointing:
     def test_checkpoint_saved_after_each_stage(self):
@@ -96,8 +99,19 @@ class TestCheckpointing:
             "pipeline_id": pipeline_id,
             "started_at": "2026-01-01T00:00:00Z",
             "stages": {
-                "s1": {"status": "done", "output": "cached", "error": None, "attempts": 1, "finished_at": "2026-01-01T00:01:00Z"},
-                "s2": {"status": "pending", "output": None, "error": None, "attempts": 0},
+                "s1": {
+                    "status": "done",
+                    "output": "cached",
+                    "error": None,
+                    "attempts": 1,
+                    "finished_at": "2026-01-01T00:01:00Z",
+                },
+                "s2": {
+                    "status": "pending",
+                    "output": None,
+                    "error": None,
+                    "attempts": 0,
+                },
             },
         }
         ckpt.save(pipeline_id, partial)
@@ -147,6 +161,7 @@ class TestCheckpointing:
 
 # ── Retry + backoff ────────────────────────────────────────────────────────────
 
+
 class TestRetry:
     def test_stage_retried_on_failure(self):
         attempts = []
@@ -165,7 +180,12 @@ class TestRetry:
 
     def test_stage_fails_after_max_retries(self):
         p = Pipeline(pid())
-        p.stage("always_fail", lambda ctx: (_ for _ in ()).throw(RuntimeError("boom")), retry=2, retry_backoff=0.01)
+        p.stage(
+            "always_fail",
+            lambda ctx: (_ for _ in ()).throw(RuntimeError("boom")),
+            retry=2,
+            retry_backoff=0.01,
+        )
         outputs = p.run()
         assert "always_fail" not in outputs
 
@@ -188,13 +208,18 @@ class TestRetry:
 
 # ── Fail modes ─────────────────────────────────────────────────────────────────
 
+
 class TestFailModes:
     def test_fail_fast_stops_pipeline(self):
         # fail_fast stops stages that have not yet started (i.e. dependent stages).
         # s2 depends on s1, so when s1 fails fast, s2 must not run.
         ran = []
         p = Pipeline(pid())
-        p.stage("s1", lambda ctx: (_ for _ in ()).throw(RuntimeError("boom")), fail_mode="fail_fast")
+        p.stage(
+            "s1",
+            lambda ctx: (_ for _ in ()).throw(RuntimeError("boom")),
+            fail_mode="fail_fast",
+        )
         p.stage("s2", lambda ctx: ran.append("s2") or "ok", deps=["s1"])
         p.run()
         assert "s2" not in ran
@@ -202,7 +227,11 @@ class TestFailModes:
     def test_fail_continue_keeps_running_independent_stages(self):
         ran = []
         p = Pipeline(pid())
-        p.stage("s1", lambda ctx: (_ for _ in ()).throw(RuntimeError("boom")), fail_mode="continue")
+        p.stage(
+            "s1",
+            lambda ctx: (_ for _ in ()).throw(RuntimeError("boom")),
+            fail_mode="continue",
+        )
         p.stage("s2", lambda ctx: ran.append("s2") or "ok")  # no dep on s1
         p.run()
         assert "s2" in ran
@@ -210,13 +239,18 @@ class TestFailModes:
     def test_dep_of_failed_stage_is_skipped(self):
         ran = []
         p = Pipeline(pid())
-        p.stage("s1", lambda ctx: (_ for _ in ()).throw(RuntimeError("boom")), fail_mode="continue")
+        p.stage(
+            "s1",
+            lambda ctx: (_ for _ in ()).throw(RuntimeError("boom")),
+            fail_mode="continue",
+        )
         p.stage("s2", lambda ctx: ran.append("s2") or "ok", deps=["s1"])  # dep on s1
         p.run()
         assert "s2" not in ran
 
 
 # ── Parallel execution ─────────────────────────────────────────────────────────
+
 
 class TestParallelExecution:
     def test_independent_stages_run_in_parallel(self):
@@ -230,6 +264,7 @@ class TestParallelExecution:
                 time.sleep(0.1)
                 end_times[name] = time.monotonic()
                 return name
+
             fn.__name__ = name
             return fn
 
@@ -251,6 +286,7 @@ class TestParallelExecution:
             def fn(ctx):
                 received[name] = ctx.get("shared_key")
                 return name
+
             fn.__name__ = name
             return fn
 
@@ -263,6 +299,7 @@ class TestParallelExecution:
 
 
 # ── Timeout ────────────────────────────────────────────────────────────────────
+
 
 class TestTimeout:
     def test_stage_fails_when_timeout_exceeded(self):
@@ -287,6 +324,7 @@ class TestTimeout:
 
 
 # ── Edge cases ─────────────────────────────────────────────────────────────────
+
 
 class TestEdgeCases:
     def test_empty_pipeline_runs_without_error(self):

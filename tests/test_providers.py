@@ -1,17 +1,20 @@
 """Tests for providers — prompt rendering, error handling (LLMs mocked)."""
 
 import os
+
 import pytest
 
 os.environ["STAGEHAND_DIR"] = "/tmp/stagehand-test-providers"
 
-from stagehand.providers.claude import claude_stage, _render as claude_render
-from stagehand.providers.openai import _render as openai_render
+from stagehand.providers.claude import _render as claude_render
+from stagehand.providers.claude import claude_stage
 from stagehand.providers.gemini import _render as gemini_render
-from stagehand.providers.http import http_stage, _render as http_render
-
+from stagehand.providers.http import _render as http_render
+from stagehand.providers.http import http_stage
+from stagehand.providers.openai import _render as openai_render
 
 # ── Prompt rendering ───────────────────────────────────────────────────────────
+
 
 class TestPromptRendering:
     def test_renders_simple_key(self):
@@ -45,6 +48,7 @@ class TestPromptRendering:
 
 # ── claude_stage ───────────────────────────────────────────────────────────────
 
+
 class TestClaudeStage:
     def test_returns_callable(self):
         fn = claude_stage("Write about: {topic}")
@@ -53,6 +57,7 @@ class TestClaudeStage:
     def test_cli_backend_raises_on_bad_command(self, monkeypatch):
         """Test CLI backend error handling (mocked subprocess)."""
         import subprocess
+
         from stagehand.providers import claude as claude_mod
 
         # Force CLI backend (pretend SDK is not installed)
@@ -63,6 +68,7 @@ class TestClaudeStage:
                 returncode = 1
                 stdout = ""
                 stderr = "some error"
+
             return Result()
 
         monkeypatch.setattr(subprocess, "run", mock_run)
@@ -74,6 +80,7 @@ class TestClaudeStage:
     def test_cli_backend_returns_stdout(self, monkeypatch):
         """Test CLI backend returns stripped stdout on success."""
         import subprocess
+
         from stagehand.providers import claude as claude_mod
 
         monkeypatch.setattr(claude_mod, "_sdk_available", lambda: False)
@@ -83,6 +90,7 @@ class TestClaudeStage:
                 returncode = 0
                 stdout = "  Hello Ankit  \n"
                 stderr = ""
+
             return Result()
 
         monkeypatch.setattr(subprocess, "run", mock_run)
@@ -94,6 +102,7 @@ class TestClaudeStage:
     def test_prompt_template_rendered_before_call(self, monkeypatch):
         """Verify the rendered prompt is passed to subprocess, not the template."""
         import subprocess
+
         from stagehand.providers import claude as claude_mod
 
         monkeypatch.setattr(claude_mod, "_sdk_available", lambda: False)
@@ -101,10 +110,12 @@ class TestClaudeStage:
 
         def mock_run(cmd, *args, **kwargs):
             captured["prompt"] = cmd[2]  # claude -p <prompt>
+
             class Result:
                 returncode = 0
                 stdout = "ok"
                 stderr = ""
+
             return Result()
 
         monkeypatch.setattr(subprocess, "run", mock_run)
@@ -116,6 +127,7 @@ class TestClaudeStage:
 
 # ── http_stage ─────────────────────────────────────────────────────────────────
 
+
 class TestHttpStage:
     def test_returns_callable(self):
         fn = http_stage("GET", "https://example.com/{id}")
@@ -123,14 +135,18 @@ class TestHttpStage:
 
     def test_url_rendered_from_context(self, monkeypatch):
         import urllib.request
-        from stagehand.providers import http as http_mod
 
         opened_urls = []
 
         class MockResponse:
-            def read(self): return b'{"ok": true}'
-            def __enter__(self): return self
-            def __exit__(self, *a): pass
+            def read(self):
+                return b'{"ok": true}'
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                pass
 
         def mock_urlopen(req, timeout=None):
             opened_urls.append(req.full_url)
@@ -146,9 +162,14 @@ class TestHttpStage:
         import urllib.request
 
         class MockResponse:
-            def read(self): return b'{"name": "Ankit"}'
-            def __enter__(self): return self
-            def __exit__(self, *a): pass
+            def read(self):
+                return b'{"name": "Ankit"}'
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                pass
 
         monkeypatch.setattr(urllib.request, "urlopen", lambda *a, **kw: MockResponse())
 
@@ -157,9 +178,9 @@ class TestHttpStage:
         assert result == {"name": "Ankit"}
 
     def test_raises_on_http_error(self, monkeypatch):
-        import urllib.request
-        import urllib.error
         import io
+        import urllib.error
+        import urllib.request
 
         def mock_urlopen(*a, **kw):
             # HTTPError fp argument provides the response body

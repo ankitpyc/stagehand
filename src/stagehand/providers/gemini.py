@@ -7,7 +7,7 @@ API key:  GEMINI_API_KEY environment variable
 
 from __future__ import annotations
 
-from typing import Callable, Dict, Optional
+from typing import Callable, Dict
 
 
 def gemini_stage(
@@ -32,14 +32,14 @@ def gemini_stage(
             gemini_stage("Write a post about:\n\n{research}"),
             deps=["research"])
     """
+
     def fn(ctx: Dict) -> str:
         try:
             import google.generativeai as genai
         except ImportError:
-            raise ImportError(
-                "google-generativeai not installed. Run: pip install stagehand[gemini]"
-            )
+            raise ImportError("google-generativeai not installed. Run: pip install stagehand[gemini]")
         import os
+
         api_key = os.environ.get("GEMINI_API_KEY")
         if not api_key:
             raise RuntimeError("GEMINI_API_KEY environment variable not set")
@@ -68,6 +68,5 @@ def _render(template: str, ctx: dict) -> str:
     except KeyError as e:
         available = ", ".join(sorted(ctx.keys()))
         raise KeyError(
-            f"gemini_stage template references missing key {e}. "
-            f"Available context keys: {available}"
+            f"gemini_stage template references missing key {e}. Available context keys: {available}"
         ) from None

@@ -37,13 +37,14 @@ def claude_stage(
             claude_stage("Write a LinkedIn post about:\n\n{research}"),
             deps=["research"])
     """
+
     def fn(ctx: Dict) -> str:
         prompt = _render(prompt_template, ctx)
         if _sdk_available():
             return _call_sdk(prompt, model, timeout, max_tokens, system)
         return _call_cli(prompt, model, timeout)
 
-    fn.__name__ = f"claude_stage"
+    fn.__name__ = "claude_stage"
     fn.__doc__ = f"Claude: {prompt_template[:60]}..."
     return fn
 
@@ -54,21 +55,28 @@ def _render(template: str, ctx: dict) -> str:
     except KeyError as e:
         available = ", ".join(sorted(ctx.keys()))
         raise KeyError(
-            f"claude_stage template references missing key {e}. "
-            f"Available context keys: {available}"
+            f"claude_stage template references missing key {e}. Available context keys: {available}"
         ) from None
 
 
 def _sdk_available() -> bool:
     try:
         import anthropic  # noqa: F401
+
         return True
     except ImportError:
         return False
 
 
-def _call_sdk(prompt: str, model: Optional[str], timeout: int, max_tokens: int, system: Optional[str]) -> str:
+def _call_sdk(
+    prompt: str,
+    model: Optional[str],
+    timeout: int,
+    max_tokens: int,
+    system: Optional[str],
+) -> str:
     import anthropic
+
     client = anthropic.Anthropic(timeout=timeout)
     kwargs = dict(
         model=model or "claude-sonnet-4-6",
@@ -90,7 +98,5 @@ def _call_cli(prompt: str, model: Optional[str], timeout: int) -> str:
         cmd += ["--model", model]
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, env=env)
     if result.returncode != 0:
-        raise RuntimeError(
-            f"claude CLI failed (exit {result.returncode}):\n{result.stderr[:1000]}"
-        )
+        raise RuntimeError(f"claude CLI failed (exit {result.returncode}):\n{result.stderr[:1000]}")
     return result.stdout.strip()

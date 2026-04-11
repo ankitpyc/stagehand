@@ -11,6 +11,7 @@ Commands:
 """
 
 import sys
+
 from . import __version__
 from . import checkpoint as ckpt
 from .pipeline import Pipeline
@@ -35,7 +36,13 @@ def main():
             return
         _header("PIPELINE", "STARTED", "DONE", "FAILED", "PENDING")
         for r in active:
-            _row(r["pipeline_id"][:50], r["started_at"][:16], r["done"], r["failed"], r["pending"])
+            _row(
+                r["pipeline_id"][:50],
+                r["started_at"][:16],
+                r["done"],
+                r["failed"],
+                r["pending"],
+            )
 
     elif cmd == "status":
         if len(args) < 2:
@@ -79,6 +86,7 @@ def main():
                 i += 1
 
         from .dashboard import serve
+
         serve(port=port, open_browser=not no_browser)
 
     else:

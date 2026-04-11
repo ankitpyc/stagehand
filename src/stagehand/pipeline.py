@@ -13,7 +13,13 @@ Features:
 import sys
 import time
 import traceback
-from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError as FutureTimeout
+from concurrent.futures import (
+    ThreadPoolExecutor,
+    as_completed,
+)
+from concurrent.futures import (
+    TimeoutError as FutureTimeout,
+)
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional
@@ -21,8 +27,8 @@ from typing import Any, Callable, Dict, List, Optional
 from . import checkpoint as ckpt
 from . import registry as reg
 
-
 # ── Stage definition ───────────────────────────────────────────────────────────
+
 
 @dataclass
 class Stage:
@@ -30,7 +36,7 @@ class Stage:
     fn: Callable[[Dict], Any]
     deps: List[str] = field(default_factory=list)
     retry: int = 1
-    retry_backoff: float = 2.0   # seconds; doubles on each retry
+    retry_backoff: float = 2.0  # seconds; doubles on each retry
     timeout: Optional[float] = None  # seconds; None = no timeout
     # "fail_fast": stop pipeline on failure
     # "continue": log failure, keep running independent stages
@@ -38,6 +44,7 @@ class Stage:
 
 
 # ── Pipeline ───────────────────────────────────────────────────────────────────
+
 
 class Pipeline:
     """
@@ -75,11 +82,17 @@ class Pipeline:
         if any(s.name == name for s in self._stages):
             raise ValueError(f"Stage '{name}' already registered")
         resolved_deps = deps or []
-        self._stages.append(Stage(
-            name=name, fn=fn, deps=resolved_deps,
-            retry=retry, retry_backoff=retry_backoff,
-            timeout=timeout, fail_mode=fail_mode,
-        ))
+        self._stages.append(
+            Stage(
+                name=name,
+                fn=fn,
+                deps=resolved_deps,
+                retry=retry,
+                retry_backoff=retry_backoff,
+                timeout=timeout,
+                fail_mode=fail_mode,
+            )
+        )
         if name not in self._state["stages"]:
             self._state["stages"][name] = _pending_state()
         # Save DAG structure for visualization
@@ -153,7 +166,10 @@ class Pipeline:
             ckpt.clear(self.pipeline_id)
             _log(f"Pipeline complete ✓  [{self.pipeline_id}]")
         else:
-            _log(f"Pipeline finished with failures: {failed_stages}  [{self.pipeline_id}]", err=True)
+            _log(
+                f"Pipeline finished with failures: {failed_stages}  [{self.pipeline_id}]",
+                err=True,
+            )
             _log("Re-run the same command to resume from failed stages.", err=True)
 
         # Update pipeline registry (never fail the pipeline for registry issues)
@@ -255,7 +271,10 @@ class Pipeline:
 
             except Exception:
                 last_error = traceback.format_exc()
-                _log(f"✗ {stage.name}  attempt {attempt} failed:\n    {last_error.splitlines()[-1]}", err=True)
+                _log(
+                    f"✗ {stage.name}  attempt {attempt} failed:\n    {last_error.splitlines()[-1]}",
+                    err=True,
+                )
                 if attempt < stage.retry:
                     _log(f"  retrying in {delay:.1f}s...", err=True)
                     time.sleep(delay)
@@ -275,6 +294,7 @@ class Pipeline:
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
+
 
 def _call_with_timeout(fn: Callable, ctx: dict, timeout: Optional[float]):
     """Call fn(ctx). If timeout is set, raise TimeoutError if it takes too long."""
@@ -296,6 +316,7 @@ def _pending_state() -> dict:
 def _serialize(value: Any) -> Any:
     """Make a value JSON-safe. Raises TypeError for truly non-serializable types."""
     from pathlib import Path as _Path
+
     if isinstance(value, _Path):
         return str(value)
     if isinstance(value, (str, int, float, bool, type(None))):
