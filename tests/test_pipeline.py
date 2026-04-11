@@ -2,7 +2,7 @@
 
 import os
 import time
-import threading
+
 import pytest
 
 os.environ["STAGEHAND_DIR"] = "/tmp/stagehand-test-pipeline"
@@ -21,10 +21,12 @@ def isolated_dir(tmp_path):
 def pid(name="test"):
     """Unique pipeline ID per test."""
     import uuid
+
     return f"{name}-{uuid.uuid4().hex[:8]}"
 
 
 # ── Basic execution ────────────────────────────────────────────────────────────
+
 
 class TestBasicExecution:
     def test_stages_run_in_dep_order(self):
@@ -58,6 +60,7 @@ class TestBasicExecution:
 
 
 # ── Checkpointing and resume ───────────────────────────────────────────────────
+
 
 class TestCheckpointing:
     def test_checkpoint_saved_after_each_stage(self):
@@ -147,6 +150,7 @@ class TestCheckpointing:
 
 # ── Retry + backoff ────────────────────────────────────────────────────────────
 
+
 class TestRetry:
     def test_stage_retried_on_failure(self):
         attempts = []
@@ -188,6 +192,7 @@ class TestRetry:
 
 # ── Fail modes ─────────────────────────────────────────────────────────────────
 
+
 class TestFailModes:
     def test_fail_fast_stops_pipeline(self):
         # fail_fast stops stages that have not yet started (i.e. dependent stages).
@@ -218,6 +223,7 @@ class TestFailModes:
 
 # ── Parallel execution ─────────────────────────────────────────────────────────
 
+
 class TestParallelExecution:
     def test_independent_stages_run_in_parallel(self):
         """Stages with no deps should overlap in time."""
@@ -230,6 +236,7 @@ class TestParallelExecution:
                 time.sleep(0.1)
                 end_times[name] = time.monotonic()
                 return name
+
             fn.__name__ = name
             return fn
 
@@ -251,6 +258,7 @@ class TestParallelExecution:
             def fn(ctx):
                 received[name] = ctx.get("shared_key")
                 return name
+
             fn.__name__ = name
             return fn
 
@@ -263,6 +271,7 @@ class TestParallelExecution:
 
 
 # ── Timeout ────────────────────────────────────────────────────────────────────
+
 
 class TestTimeout:
     def test_stage_fails_when_timeout_exceeded(self):
@@ -287,6 +296,7 @@ class TestTimeout:
 
 
 # ── Edge cases ─────────────────────────────────────────────────────────────────
+
 
 class TestEdgeCases:
     def test_empty_pipeline_runs_without_error(self):

@@ -9,8 +9,8 @@ Usage:
     stagehand dashboard --port 8080  # custom port
 """
 
-import json
 import http.server
+import json
 import os
 import threading
 import webbrowser
@@ -22,7 +22,7 @@ from . import registry as reg
 
 def get_dashboard_data() -> dict:
     """Collect all pipeline data for the dashboard."""
-    active = ckt_list_all()
+    active = ckpt.list_active()
     registry = reg.load()
     runs_data = {}
 
@@ -34,7 +34,7 @@ def get_dashboard_data() -> dict:
         known_ids.add(pid)
 
     for pid in known_ids:
-        runs = ckt.list_runs(pid)
+        runs = ckpt.list_runs(pid)
         if runs:
             runs_data[pid] = runs[:10]
 
@@ -43,21 +43,6 @@ def get_dashboard_data() -> dict:
         "registry": registry.get("pipelines", {}),
         "runs": runs_data,
     }
-
-
-def ckt_list_all():
-    """Extended list_active that includes DAG structure."""
-    active_dir = Path(os.environ.get("STAGEHAND_DIR", "~/.stagehand")).expanduser() / "active"
-    if not active_dir.exists():
-        return []
-    results = []
-    for f in sorted(active_dir.glob("*.json")):
-        try:
-            data = json.loads(f.read_text(encoding="utf-8"))
-            results.append(data)
-        except Exception:
-            pass
-    return results
 
 
 def collect_all_pipelines() -> list:
@@ -294,7 +279,9 @@ function renderDAG(stageNames, dag, stages) {
 
   // Build SVG
   let svg = '<svg class="dag-svg" width="' + totalW + '" height="' + totalH + '" viewBox="0 0 ' + totalW + ' ' + totalH + '">';
-  svg += '<defs><marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#272D38"/></marker></defs>';
+  svg += '<defs><marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" ' +
+    'markerWidth="6" markerHeight="6" orient="auto-start-reverse">' +
+    '<path d="M 0 0 L 10 5 L 0 10 z" fill="#272D38"/></marker></defs>';
 
   // Edges
   stageNames.forEach(name => {

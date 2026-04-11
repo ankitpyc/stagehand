@@ -12,11 +12,10 @@ Design:
 import fcntl
 import json
 import os
-import time
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional
 
 
 def _checkpoint_dir() -> Path:
@@ -45,6 +44,7 @@ def _safe_id(pipeline_id: str) -> str:
 
 # ── File locking ───────────────────────────────────────────────────────────────
 
+
 @contextmanager
 def _lock(pipeline_id: str):
     """Acquire an exclusive file lock for this pipeline_id."""
@@ -60,6 +60,7 @@ def _lock(pipeline_id: str):
 
 # ── Atomic write ───────────────────────────────────────────────────────────────
 
+
 def _atomic_write(path: Path, data: dict) -> None:
     """Write JSON atomically: write to .tmp then os.replace() (POSIX rename)."""
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -69,6 +70,7 @@ def _atomic_write(path: Path, data: dict) -> None:
 
 
 # ── Public API ─────────────────────────────────────────────────────────────────
+
 
 def load(pipeline_id: str) -> Optional[dict]:
     """Load checkpoint for pipeline_id. Returns None if no checkpoint exists."""
@@ -120,14 +122,16 @@ def list_active() -> list[dict]:
         try:
             data = json.loads(f.read_text(encoding="utf-8"))
             stages = data.get("stages", {})
-            results.append({
-                "pipeline_id": data.get("pipeline_id", f.stem),
-                "started_at": data.get("started_at", "?"),
-                "total": len(stages),
-                "done": sum(1 for s in stages.values() if s["status"] == "done"),
-                "failed": sum(1 for s in stages.values() if s["status"] == "failed"),
-                "pending": sum(1 for s in stages.values() if s["status"] == "pending"),
-            })
+            results.append(
+                {
+                    "pipeline_id": data.get("pipeline_id", f.stem),
+                    "started_at": data.get("started_at", "?"),
+                    "total": len(stages),
+                    "done": sum(1 for s in stages.values() if s["status"] == "done"),
+                    "failed": sum(1 for s in stages.values() if s["status"] == "failed"),
+                    "pending": sum(1 for s in stages.values() if s["status"] == "pending"),
+                }
+            )
         except Exception:
             pass
     return results
@@ -144,14 +148,16 @@ def list_runs(pipeline_id: str) -> list[dict]:
             data = json.loads(f.read_text(encoding="utf-8"))
             stages = data.get("stages", {})
             failed = [n for n, s in stages.items() if s["status"] == "failed"]
-            results.append({
-                "run": f.stem,
-                "started_at": data.get("started_at", "?"),
-                "archived_at": data.get("archived_at", "?"),
-                "done": sum(1 for s in stages.values() if s["status"] == "done"),
-                "total": len(stages),
-                "failed_stages": failed,
-            })
+            results.append(
+                {
+                    "run": f.stem,
+                    "started_at": data.get("started_at", "?"),
+                    "archived_at": data.get("archived_at", "?"),
+                    "done": sum(1 for s in stages.values() if s["status"] == "done"),
+                    "total": len(stages),
+                    "failed_stages": failed,
+                }
+            )
         except Exception:
             pass
     return results

@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import urllib.error
 import urllib.request
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict
 
 
 def http_stage(
@@ -43,6 +43,7 @@ def http_stage(
                        body_template='{{"title": "{title}", "body": "{draft}"}}'),
             deps=["draft"])
     """
+
     def fn(ctx: Dict) -> Any:
         url = _render(url_template, ctx)
         body = _render(body_template, ctx).encode("utf-8") if body_template else None
@@ -59,9 +60,7 @@ def http_stage(
                 raw = resp.read().decode("utf-8")
         except urllib.error.HTTPError as e:
             body_text = e.read().decode("utf-8", errors="replace")
-            raise RuntimeError(
-                f"HTTP {e.code} {e.reason} for {method} {url}:\n{body_text[:500]}"
-            )
+            raise RuntimeError(f"HTTP {e.code} {e.reason} for {method} {url}:\n{body_text[:500]}")
 
         if expect_json:
             try:
@@ -80,7 +79,4 @@ def _render(template: str, ctx: dict) -> str:
         return template.format_map(ctx)
     except KeyError as e:
         available = ", ".join(sorted(ctx.keys()))
-        raise KeyError(
-            f"http_stage template references missing key {e}. "
-            f"Available context keys: {available}"
-        ) from None
+        raise KeyError(f"http_stage template references missing key {e}. Available context keys: {available}") from None

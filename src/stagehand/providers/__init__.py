@@ -15,8 +15,8 @@ Missing keys raise a clear KeyError instead of silently passing {key} forward.
 """
 
 from .claude import claude_stage
-from .openai import openai_stage
 from .gemini import gemini_stage
 from .http import http_stage
+from .openai import openai_stage
 
 __all__ = ["claude_stage", "openai_stage", "gemini_stage", "http_stage"]

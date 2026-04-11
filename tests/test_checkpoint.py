@@ -3,8 +3,9 @@
 import json
 import os
 import threading
-import pytest
 from pathlib import Path
+
+import pytest
 
 # Use an isolated temp dir for all checkpoint tests
 os.environ["STAGEHAND_DIR"] = "/tmp/stagehand-test"

@@ -7,7 +7,7 @@ API key:  OPENAI_API_KEY environment variable
 
 from __future__ import annotations
 
-from typing import Callable, Dict, Optional
+from typing import Callable, Dict
 
 
 def openai_stage(
@@ -32,13 +32,12 @@ def openai_stage(
             openai_stage("Summarize this research:\n\n{fetch}"),
             deps=["fetch"])
     """
+
     def fn(ctx: Dict) -> str:
         try:
             from openai import OpenAI
         except ImportError:
-            raise ImportError(
-                "openai package not installed. Run: pip install stagehand[openai]"
-            )
+            raise ImportError("openai package not installed. Run: pip install stagehand[openai]")
 
         prompt = _render(prompt_template, ctx)
         client = OpenAI(timeout=timeout)
@@ -65,7 +64,4 @@ def _render(template: str, ctx: dict) -> str:
         return template.format_map(ctx)
     except KeyError as e:
         available = ", ".join(sorted(ctx.keys()))
-        raise KeyError(
-            f"openai_stage template references missing key {e}. "
-            f"Available context keys: {available}"
-        ) from None
+        raise KeyError(f"openai_stage template references missing key {e}. Available context keys: {available}") from None

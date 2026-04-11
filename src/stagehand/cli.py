@@ -11,6 +11,7 @@ Commands:
 """
 
 import sys
+
 from . import __version__
 from . import checkpoint as ckpt
 from .pipeline import Pipeline
@@ -79,6 +80,7 @@ def main():
                 i += 1
 
         from .dashboard import serve
+
         serve(port=port, open_browser=not no_browser)
 
     else:
