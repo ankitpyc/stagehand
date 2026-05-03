@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "capabilities": [
+    {
+      "name": "claude_stage",
+      "kind": "provider",
+      "description": "Run a Claude prompt as a pipeline stage. Renders prompt_template with str.format_map(ctx) and returns the model's text response. Auto-selects between the anthropic SDK and the `claude -p` CLI fallback.",
+      "when_to_use": "Reasoning, planning, structured generation, summarization, content drafting, or any step that benefits from Claude's strengths.",
+      "params": [
+        {"name": "prompt_template", "type": "string", "required": true, "description": "Format string referencing ctx keys as {key}", "default": null},
+        {"name": "model", "type": "string", "required": false, "description": "Model ID, e.g. claude-sonnet-4-6", "default": null},
+        {"name": "timeout", "type": "integer", "required": false, "description": "Seconds before the call is abandoned", "default": 300},
+        {"name": "max_tokens", "type": "integer", "required": false, "description": "Max tokens in the response (SDK backend only)", "default": 4096},
+        {"name": "system", "type": "string", "required": false, "description": "Optional system prompt (SDK backend only)", "default": null}
+      ],
+      "example": "claude_stage(\"Summarize: {fetch}\", model=\"claude-sonnet-4-6\")"
+    },
+    {
+      "name": "openai_stage",
+      "kind": "provider",
+      "description": "Run an OpenAI chat completion as a pipeline stage. Returns the assistant message text. Requires `pip install stagehand[openai]` and OPENAI_API_KEY.",
+      "when_to_use": "When OpenAI models are preferred for cost, latency, or capability reasons (e.g. structured JSON via response_format on supported models).",
+      "params": [
+        {"name": "prompt_template", "type": "string", "required": true, "description": "Format string referencing ctx keys as {key}", "default": null},
+        {"name": "model", "type": "string", "required": false, "description": "Model ID, e.g. gpt-4o", "default": "gpt-4o"},
+        {"name": "timeout", "type": "integer", "required": false, "description": "Seconds before the call is abandoned", "default": 300},
+        {"name": "max_tokens", "type": "integer", "required": false, "description": "Max tokens in the response", "default": 4096},
+        {"name": "system", "type": "string", "required": false, "description": "Optional system prompt", "default": null}
+      ],
+      "example": "openai_stage(\"Summarize: {fetch}\", model=\"gpt-4o\")"
+    },
+    {
+      "name": "gemini_stage",
+      "kind": "provider",
+      "description": "Run a Gemini generate_content call as a pipeline stage. Returns the model's text response. Requires `pip install stagehand[gemini]` and GEMINI_API_KEY.",
+      "when_to_use": "When Gemini models are preferred (e.g. long-context tasks on gemini-1.5-pro, multimodal inputs, or cost on gemini-2.0-flash).",
+      "params": [
+        {"name": "prompt_template", "type": "string", "required": true, "description": "Format string referencing ctx keys as {key}", "default": null},
+        {"name": "model", "type": "string", "required": false, "description": "Model ID, e.g. gemini-2.0-flash", "default": "gemini-2.0-flash"},
+        {"name": "timeout", "type": "integer", "required": false, "description": "Seconds before the call is abandoned", "default": 300},
+        {"name": "max_tokens", "type": "integer", "required": false, "description": "Max output tokens", "default": 4096},
+        {"name": "system", "type": "string", "required": false, "description": "Optional system instruction", "default": null}
+      ],
+      "example": "gemini_stage(\"Summarize: {fetch}\", model=\"gemini-2.0-flash\")"
+    },
+    {
+      "name": "http_stage",
+      "kind": "provider",
+      "description": "Make an HTTP request as a pipeline stage using urllib.request from stdlib. Returns parsed JSON when expect_json is true and the response is JSON, otherwise raw text. URL and body templates support {ctx_key} substitution.",
+      "when_to_use": "Calling external APIs (REST), webhooks, fetching pages, or any I/O that does not warrant a custom Python stage.",
+      "params": [
+        {"name": "method", "type": "string", "required": true, "description": "HTTP method (GET, POST, PATCH, DELETE)", "default": null},
+        {"name": "url_template", "type": "string", "required": true, "description": "URL with optional {ctx_key} placeholders", "default": null},
+        {"name": "headers", "type": "object", "required": false, "description": "Static headers dict (e.g. Authorization)", "default": null},
+        {"name": "body_template", "type": "string", "required": false, "description": "Request body template (for POST/PATCH)", "default": null},
+        {"name": "timeout", "type": "integer", "required": false, "description": "Seconds before the request is abandoned", "default": 30},
+        {"name": "expect_json", "type": "boolean", "required": false, "description": "Parse response as JSON if true", "default": true}
+      ],
+      "example": "http_stage(\"GET\", \"https://api.example.com/users/{user_id}\")"
+    }
+  ]
+}
