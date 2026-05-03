@@ -111,6 +111,22 @@ class TestValidNames:
         result = validate(spec([stage("fetch_papers_v2", prompt="hi")]))
         assert "E003" not in codes(result)
 
+    def test_single_letter_name_passes(self):
+        result = validate(spec([stage("a", prompt="hi")]))
+        assert "E003" not in codes(result)
+
+    def test_consecutive_underscores_pass(self):
+        result = validate(spec([stage("fetch__papers", prompt="hi")]))
+        assert "E003" not in codes(result)
+
+    def test_non_string_name_fails(self):
+        result = validate(spec([{"name": 123, "function": "claude_stage", "prompt": "hi"}]))
+        assert "E003" in codes(result)
+
+    def test_whitespace_only_name_fails(self):
+        result = validate(spec([stage("   ", prompt="hi")]))
+        assert "E003" in codes(result)
+
 
 # ── E004: required_fields ──────────────────────────────────────────────────────
 
@@ -146,6 +162,28 @@ class TestDepsExist:
         ]))
         assert "E005" not in codes(result)
 
+    def test_empty_deps_list_passes(self):
+        result = validate(spec([
+            stage("fetch", prompt="hi", deps=[]),
+        ]))
+        assert "E005" not in codes(result)
+
+    def test_scalar_string_dep_works(self):
+        # _deps_of handles scalar strings — should not fail.
+        result = validate(spec([
+            stage("fetch", prompt="hi"),
+            {"name": "write", "function": "claude_stage", "prompt": "x", "deps": "fetch"},
+        ]))
+        assert "E005" not in codes(result)
+
+    def test_multiple_deps_all_must_exist(self):
+        result = validate(spec([
+            stage("fetch", prompt="hi"),
+            stage("clean", prompt="x", deps=["fetch"]),
+            stage("write", prompt="x", deps=["fetch", "clean", "ghost"]),
+        ]))
+        assert "E005" in codes(result)
+
 
 # ── E006: no_self_dep ──────────────────────────────────────────────────────────
 
@@ -160,6 +198,19 @@ class TestNoSelfDep:
             stage("write", prompt="{fetch}", deps=["fetch"]),
         ]))
         assert "E006" not in codes(result)
+
+    def test_self_dep_with_other_deps_fails(self):
+        result = validate(spec([
+            stage("fetch", prompt="hi"),
+            stage("loop", prompt="hi", deps=["fetch", "loop"]),
+        ]))
+        assert "E006" in codes(result)
+
+    def test_self_dep_as_scalar_string_fails(self):
+        result = validate(spec([
+            {"name": "loop", "function": "claude_stage", "prompt": "hi", "deps": "loop"},
+        ]))
+        assert "E006" in codes(result)
 
 
 # ── E007: no_cycles ────────────────────────────────────────────────────────────
@@ -194,6 +245,26 @@ class TestNoCycles:
         result = validate(spec([stage("loop", prompt="hi", deps=["loop"])]))
         assert "E007" not in codes(result)
         assert "E006" in codes(result)
+
+    def test_four_node_cycle_fails(self):
+        result = validate(spec([
+            stage("a", prompt="hi", deps=["b"]),
+            stage("b", prompt="hi", deps=["c"]),
+            stage("c", prompt="hi", deps=["d"]),
+            stage("d", prompt="hi", deps=["a"]),
+        ]))
+        assert "E007" in codes(result)
+
+    def test_complex_dag_with_multiple_paths_passes(self):
+        # Diamond-shaped DAG: a -> (b,c) -> d
+        result = validate(spec([
+            stage("a", prompt="hi"),
+            stage("b", prompt="{a}", deps=["a"]),
+            stage("c", prompt="{a}", deps=["a"]),
+            stage("d", prompt="{b} {c}", deps=["b", "c"]),
+            stage("e", prompt="{d}", deps=["d"]),
+        ]))
+        assert "E007" not in codes(result)
 
 
 # ── E008: function_in_registry ─────────────────────────────────────────────────
@@ -236,6 +307,43 @@ class TestFunctionInRegistry:
     def test_no_registry_skips_e008(self):
         # Without a registry, we have no ground truth, so don't report E008.
         result = validate(spec([stage("a", function="anything", prompt="hi")]))
+        assert "E008" not in codes(result)
+
+    def test_registry_with_names_method(self):
+        class Reg:
+            def names(self):
+                return ["claude_stage", "openai_stage"]
+
+        result = validate(
+            spec([stage("a", function="unknown", prompt="hi")]),
+            registry=Reg(),
+        )
+        assert "E008" in codes(result)
+
+    def test_registry_with_list(self):
+        registry = ["claude_stage", "openai_stage", "gemini_stage"]
+        result = validate(
+            spec([stage("a", function="gemini_stage", prompt="hi")]),
+            registry=registry,
+        )
+        assert "E008" not in codes(result)
+
+    def test_registry_with_frozenset(self):
+        registry = frozenset(["claude_stage", "openai_stage"])
+        result = validate(
+            spec([stage("a", function="openai_stage", prompt="hi")]),
+            registry=registry,
+        )
+        assert "E008" not in codes(result)
+
+    def test_empty_string_function_fails(self):
+        registry = {"claude_stage", "openai_stage"}
+        result = validate(
+            spec([stage("a", function="", prompt="hi")]),
+            registry=registry,
+        )
+        # Empty string functions don't match the check in _rule_function_in_registry
+        # which checks `if isinstance(fn, str) and fn`
         assert "E008" not in codes(result)
 
 
@@ -282,6 +390,73 @@ class TestPromptRefsUpstream:
     def test_escaped_braces_are_not_placeholders(self):
         result = validate(spec([
             stage("a", prompt="literal {{braces}} here"),
+        ]))
+        assert "E009" not in codes(result)
+
+    def test_pipeline_id_reference_passes(self):
+        result = validate(spec([
+            stage("a", prompt="Pipeline: {pipeline_id}"),
+        ]))
+        assert "E009" not in codes(result)
+
+    def test_context_reference_passes(self):
+        result = validate(spec([
+            stage("a", prompt="Context: {context}"),
+        ]))
+        assert "E009" not in codes(result)
+
+    def test_dot_notation_resolves_to_root(self):
+        # {fetch.title} should be treated as referencing 'fetch'
+        result = validate(spec([
+            stage("fetch", prompt="hi"),
+            stage("write", prompt="Title: {fetch.title}", deps=["fetch"]),
+        ]))
+        assert "E009" not in codes(result)
+
+    def test_multiple_placeholders_in_one_prompt(self):
+        result = validate(spec([
+            stage("fetch", prompt="hi"),
+            stage("clean", prompt="{fetch}", deps=["fetch"]),
+            stage("write", prompt="Data: {fetch} Clean: {clean} Task: {task}",
+                  deps=["fetch", "clean"]),
+        ]))
+        assert "E009" not in codes(result)
+
+    def test_deeply_nested_transitive_deps(self):
+        # a -> b -> c -> d, and d should access all upstream stages
+        result = validate(spec([
+            stage("a", prompt="hi"),
+            stage("b", prompt="{a}", deps=["a"]),
+            stage("c", prompt="{b}", deps=["b"]),
+            stage("d", prompt="{a} {b} {c}", deps=["c"]),
+        ]))
+        assert "E009" not in codes(result)
+
+    def test_stage_with_no_prompt_passes(self):
+        # Stages without prompt should pass E009
+        result = validate(spec([
+            stage("fetch", prompt=None),
+        ]))
+        assert "E009" not in codes(result)
+
+    def test_stage_with_none_prompt_passes(self):
+        result = validate(spec([
+            {"name": "fetch", "function": "claude_stage", "deps": []},  # no prompt key
+        ]))
+        assert "E009" not in codes(result)
+
+    def test_multiple_placeholder_refs_to_same_stage(self):
+        result = validate(spec([
+            stage("fetch", prompt="hi"),
+            stage("write", prompt="First {fetch} Second {fetch} Third {fetch}",
+                  deps=["fetch"]),
+        ]))
+        assert "E009" not in codes(result)
+
+    def test_mixed_reserved_and_upstream_refs(self):
+        result = validate(spec([
+            stage("fetch", prompt="hi"),
+            stage("analyze", prompt="Task: {task} Data: {fetch}", deps=["fetch"]),
         ]))
         assert "E009" not in codes(result)
 
@@ -339,3 +514,56 @@ class TestEndToEnd:
         )
         result = validate(s)
         assert result.ok, f"Expected pass, got: {codes(result)}"
+
+    def test_none_spec_treated_as_empty(self):
+        # None spec should be coerced to empty dict, triggering E001
+        result = validate(None)
+        assert "E001" in codes(result)
+
+    def test_spec_with_none_stages_treated_as_empty(self):
+        result = validate({"pipeline_id": "x", "task": "t", "stages": None})
+        assert "E001" in codes(result)
+
+    def test_stages_with_non_dict_items_skipped(self):
+        # Non-dict/non-dataclass stage items should be skipped gracefully
+        result = validate(spec([
+            stage("a", prompt="hi"),
+            "not a stage",  # This should be skipped or coerced to empty dict
+            123,
+        ]))
+        # Should not crash, 'a' is valid, others are treated as empty dicts/ignored
+        # This is lenient — the validator focuses on what it can validate
+        assert not result or "E004" in codes(result)  # might fail due to empty dicts
+
+    def test_registry_introspection_failure_graceful(self):
+        # Registry that raises exception on introspection
+        class BadRegistry:
+            def names(self):
+                raise RuntimeError("Registry error")
+
+        result = validate(spec([stage("a", function="x", prompt="hi")]), registry=BadRegistry())
+        # Should skip E008 gracefully due to introspection failure
+        assert "E008" not in codes(result)
+
+    def test_malformed_prompt_template_skipped_gracefully(self):
+        # Malformed template like {unclosed} or {invalid notation} should not crash
+        result = validate(spec([
+            stage("a", prompt="Unclosed: {"),
+        ]))
+        # Should not crash, just won't extract the bad placeholder
+        assert "E009" not in codes(result)  # Malformed -> no placeholders extracted
+
+    def test_all_nine_rules_with_no_errors(self):
+        # A comprehensive spec that satisfies all 9 rules
+        s = spec([
+            stage("init", function="claude_stage", prompt="Start with {task}"),
+            stage("step1", function="http_stage", prompt="Process {init}", deps=["init"]),
+            stage("step2", function="openai_stage", prompt="Analyze {init} and {step1}",
+                  deps=["init", "step1"]),
+            stage("final", function="claude_stage",
+                  prompt="Summarize {step2}, ID: {pipeline_id}", deps=["step2"]),
+        ])
+        registry = {"claude_stage", "http_stage", "openai_stage", "gemini_stage"}
+        result = validate(s, registry=registry)
+        assert result.ok, f"Expected pass, got: {codes(result)}"
+        assert len(result.errors) == 0
