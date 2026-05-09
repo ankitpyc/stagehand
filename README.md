@@ -28,15 +28,7 @@ It's the missing layer between "run a script" and "deploy Airflow."
 
 ### Static pipeline (known workflow)
 
-```python
-from stagehand import Pipeline, claude_stage
-
-p = Pipeline("weekly-content")
-p.stage("fetch",    fetch_from_notion)
-p.stage("generate", claude_stage("Write a LinkedIn post about: {fetch}"), deps=["fetch"])
-p.stage("deliver",  send_to_telegram, deps=["generate"])
-p.run()
-```
+See [`examples/basic_pipeline.py`](examples/basic_pipeline.py) for a runnable 3-stage demo (fetch → summarize → deliver) — `python examples/basic_pipeline.py`.
 
 ### Dynamic pipeline (plain-English task)
 
