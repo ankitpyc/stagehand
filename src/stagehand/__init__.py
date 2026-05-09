@@ -15,8 +15,9 @@ Quick start:
     outputs = p.run(context={"dry_run": True})
 """
 
+from .decomposer import Decomposer, DecompositionError
 from .pipeline import Pipeline, Stage
-from .providers import claude_stage, openai_stage, gemini_stage, http_stage
+from .providers import claude_stage, gemini_stage, http_stage, openai_stage
 
 __version__ = "0.1.0"
 __all__ = [
@@ -26,4 +27,6 @@ __all__ = [
     "openai_stage",
     "gemini_stage",
     "http_stage",
+    "Decomposer",
+    "DecompositionError",
 ]
