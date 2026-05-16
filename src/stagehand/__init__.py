@@ -16,9 +16,9 @@ Quick start:
 """
 
 from .pipeline import Pipeline, Stage
-from .providers import claude_stage, openai_stage, gemini_stage, http_stage
+from .providers import claude_stage, gemini_stage, http_stage, openai_stage
 
-__version__ = "0.1.0"
+__version__ = "0.3.0"
 __all__ = [
     "Pipeline",
     "Stage",
@@ -27,3 +27,16 @@ __all__ = [
     "gemini_stage",
     "http_stage",
 ]
+
+# ── Dynamic agent-pipeline API ─────────────────────────────────────────────────
+# AgentPipeline depends on the decomposer/wave_executor/capabilities/spec
+# subsystems. They're guarded with try/except so missing optional pieces
+# don't break the core ``import stagehand`` path; once all parts are merged
+# the imports succeed and the symbols become available.
+try:
+    from .agent_pipeline import AgentPipeline
+    from .capabilities import CapabilityRegistry
+except ImportError:  # pragma: no cover - optional subsystems not yet merged
+    pass
+else:
+    __all__ += ["AgentPipeline", "CapabilityRegistry"]
